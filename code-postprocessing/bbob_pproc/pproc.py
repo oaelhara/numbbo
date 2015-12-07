@@ -521,18 +521,30 @@ class DataSet():
     
         >>> import sys
         >>> import os
-        >>> os.chdir(os.path.abspath(os.path.dirname(os.path.dirname('__file__'))))
+        >>> import urllib
+        >>> import tarfile
+        >>> path = os.path.abspath(os.path.dirname(os.path.dirname('__file__')))
+        >>> os.chdir(path)
         >>> import bbob_pproc as bb
-        >>> dslist = bb.load('BIPOP-CMA-ES_hansen_noiseless/bbobexp_f2.info')
-        >>> dslist  # nice display in particular in IPython
-        [DataSet(BIPOP-CMA-ES on f2 2-D), DataSet(BIPOP-CMA-ES on f2 3-D), DataSet(BIPOP-CMA-ES on f2 5-D), DataSet(BIPOP-CMA-ES on f2 10-D), DataSet(BIPOP-CMA-ES on f2 20-D), DataSet(BIPOP-CMA-ES on f2 40-D)]
+        >>> infoFile = 'data/BBOB2009rawdata/BIPOP-CMA-ES_hansen_noiseless/bbobexp_f2.info'
+        >>> if not os.path.exists(infoFile):
+        ...   os.chdir(os.path.join(path, 'data'))
+        ...   dataurl = 'http://coco.lri.fr/BBOB2009/rawdata/BIPOP-CMA-ES_hansen_noiseless.tar.gz'
+        ...   filename, headers = urllib.urlretrieve(dataurl)
+        ...   archivefile = tarfile.open(filename)
+        ...   archivefile.extractall()
+        ...   os.chdir(path)
+        >>> dslist = bb.load(infoFile)
+          Data consistent according to test in consistency_check() in pproc.DataSet
+        >>> print dslist  # doctest:+ELLIPSIS
+        [DataSet(cmaes V3.30.beta on f2 2-D), ..., DataSet(cmaes V3.30.beta on f2 40-D)]
         >>> type(dslist)
         <class 'bbob_pproc.pproc.DataSetList'>
         >>> len(dslist)
         6
         >>> ds = dslist[3]  # a single data set of type DataSet
         >>> ds
-        DataSet(BIPOP-CMA-ES on f2 10-D)
+        DataSet(cmaes V3.30.beta on f2 10-D)
         >>> for d in dir(ds): print d  # dir(ds) shows attributes and methods of ds
         _DataSet__parseHeader
         __doc__
@@ -598,7 +610,7 @@ class DataSet():
         >>> ds.evals[-1,(0,5,6)]  # show last row, same columns
         array([  1.00000000e-08,   5.67600000e+03,   6.26900000e+03])
         >>> ds.info()  # prints similar data more nicely formated 
-        Algorithm: BIPOP-CMA-ES
+        Algorithm: cmaes V3.30.beta
         Function ID: 2
         Dimension DIM = 10
         Number of trials: 15
@@ -780,10 +792,8 @@ class DataSet():
         self._cut_data()
         # Compute ERT
         self.computeERTfromEvals()
-        assert all(self.evals[0][1:] == 1)
-        if not self.consistency_check(): # prints also warnings itself
-            warnings.warn("Inconsistent data found for function " + str(self.funcId) + " in %d-D (see also above)" % self.dim) 
-
+        assert all(self.evals[0][1:] == 1)        
+        
     @property
     def evals_(self):
         """Shall become ``evals`` attribute in future.
@@ -840,8 +850,14 @@ class DataSet():
         _DataSet_complement_data(self, step, final_target)
 
     def consistency_check(self):
-        """yet a stump"""
+        """checks consistency of data set according to
+           - number of instances           
+           - instances used
+        """
         is_consistent = True
+        
+        instancedict = dict((j, self.instancenumbers.count(j)) for j in set(self.instancenumbers))        
+        
         if len(set(self.instancenumbers)) < len(self.instancenumbers):
             # check exception of 2009 data sets with 3 times instances 1:5
             for i in set(self.instancenumbers):
@@ -859,6 +875,13 @@ class DataSet():
         elif len(self.instancenumbers) > 15:
             is_consistent = False
             warnings.warn('  more than 15 instances in ' + str(self.instancenumbers))
+        elif ((instancedict != genericsettings.instancesOfInterest2009)
+                and (instancedict != genericsettings.instancesOfInterest2010)
+                and (instancedict != genericsettings.instancesOfInterest2012)
+                and (instancedict != genericsettings.instancesOfInterest2013)
+                and (instancedict != genericsettings.instancesOfInterest2015)):
+            is_consistent = False
+            warnings.warn('  instance numbers not among the ones specified in 2009, 2010, 2012, 2013, or 2015')
         return is_consistent
             
     def computeERTfromEvals(self):
@@ -1373,8 +1396,11 @@ class DataSetList(list):
                 print s
             self.sort()
 
+        data_consistent = True
         for ds in self:
-            ds.consistency_check()
+            data_consistent = data_consistent and ds.consistency_check()
+        if data_consistent:
+            print("  Data consistent according to test in consistency_check() in pproc.DataSet")
             
     def processIndexFile(self, indexFile, verbose=True):
         """Reads in an index (.info?) file information on the different runs."""

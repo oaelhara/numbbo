@@ -44,6 +44,8 @@ static const double coco_two_pi = 2.0 * 3.14159265358979323846;
 struct coco_problem;
 typedef struct coco_problem coco_problem_t;
 typedef void (*coco_optimizer_t)(coco_problem_t *problem);
+struct coco_observer;
+typedef struct coco_observer coco_observer_t;
 
 /**
  * Evaluate the COCO problem represented by ${self} with the
@@ -193,9 +195,9 @@ void coco_problem_get_initial_solution(const coco_problem_t *self, double *initi
  * interface design for interpreted languages. A short hand for this
  * observer is the empty string ("").
  */
-coco_problem_t *coco_problem_add_observer(coco_problem_t *problem,
-                                          const char *observer_name,
-                                          const char *options);
+coco_problem_t *deprecated__coco_problem_add_observer(coco_problem_t *problem,
+                                                      const char *observer_name,
+                                                      const char *options);
 
 void coco_suite_benchmark(const char *problem_suite,
                           const char *observer,
@@ -203,12 +205,15 @@ void coco_suite_benchmark(const char *problem_suite,
                           coco_optimizer_t optimizer);
 
 /* shall replace the above?
-void new_coco_benchmark(const char *problem_suite,
-                        const char *problem_suite_options,
-                        const char *observer,
-                        const char *observer_options,
-                        coco_optimizer_t optimizer); */
+ void new_coco_benchmark(const char *problem_suite,
+ const char *problem_suite_options,
+ const char *observer,
+ const char *observer_options,
+ coco_optimizer_t optimizer); */
 
+coco_observer_t *coco_observer(const char *observer_name, const char *options);
+void coco_observer_free(coco_observer_t *self);
+coco_problem_t *coco_problem_add_observer(coco_problem_t *problem, coco_observer_t *observer);
 /**************************************************************************
  * Random number generator
  */
@@ -270,9 +275,6 @@ void coco_free_memory(void *data);
  */
 char *coco_strdup(const char *string);
 
-/* TODO: Move this to an internal header ASAP */
-int coco_remove_directory(const char *path);
-
 /* TODO: These bbob2009... functions should probably not be in
  * this header.
  */
@@ -289,6 +291,8 @@ int coco_remove_directory(const char *path);
  */
 /* int bbob2009_get_instance_id(const coco_problem_t *problem);
  */
+
+int coco_remove_directory(const char *path);
 
 #ifdef __cplusplus
 }
