@@ -471,6 +471,17 @@ static void logger_bbob2009_free(void *stuff) {
   bbob2009_logger_is_open = 0;
 }
 
+
+
+/**
+ * Initializes the bbob2009 logger.
+ */
+static coco_problem_t *new_logger_bbob2009(coco_observer_t *observer, coco_problem_t *problem){
+    coco_problem_t *self;
+    
+    return self;
+}
+
 static coco_problem_t *logger_bbob2009(coco_problem_t *inner_problem, const char *alg_name) {
   logger_bbob2009_t *data;
   coco_problem_t *self;
